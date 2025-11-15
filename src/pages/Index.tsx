@@ -1,131 +1,34 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Building2, User, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Building2, User, FileText, Moon, Sun } from "lucide-react";
 import logo from "@/assets/mr3x-logo.png";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Index = () => {
-  const navigate = useNavigate();
-
+  const { theme, toggleTheme } = useTheme();
+  
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="max-w-5xl w-full">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <img src={logo} alt="MR3X" className="w-32 h-32 mx-auto mb-6 rounded-2xl shadow-2xl" />
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-glow">
-            MR3X
-          </h1>
-          <p className="text-xl text-muted-foreground mb-2">
-            Gestão de Pagamentos e Cobranças de Aluguéis
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Residenciais e Comerciais
-          </p>
-        </div>
-
-        {/* Portal Selection */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <Card 
-            className="glass-card p-8 hover:scale-105 transition-transform cursor-pointer group"
-            onClick={() => navigate("/agencia")}
-          >
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <Building2 className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground">Painel Agência</h3>
-              <p className="text-sm text-muted-foreground">
-                Criar acordos, gerenciar cobranças e emitir notificações extrajudiciais
-              </p>
-              <Button className="w-full gradient-primary">
-                Acessar
-              </Button>
-            </div>
-          </Card>
-
-          <Card 
-            className="glass-card p-8 hover:scale-105 transition-transform cursor-pointer group"
-            onClick={() => navigate("/inquilino")}
-          >
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-secondary/10 flex items-center justify-center group-hover:bg-secondary/20 transition-colors">
-                <User className="w-8 h-8 text-secondary" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground">Painel Inquilino</h3>
-              <p className="text-sm text-muted-foreground">
-                Visualizar acordos, assinar digitalmente e realizar pagamentos
-              </p>
-              <Button className="w-full gradient-primary">
-                Acessar
-              </Button>
-            </div>
-          </Card>
-
-          <Card 
-            className="glass-card p-8 hover:scale-105 transition-transform cursor-pointer group"
-            onClick={() => navigate("/verificar")}
-          >
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Search className="w-8 h-8 text-accent" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground">Verificador</h3>
-              <p className="text-sm text-muted-foreground">
-                Verificar autenticidade de documentos através do hash SHA-256
-              </p>
-              <Button className="w-full gradient-primary">
-                Verificar
-              </Button>
-            </div>
-          </Card>
-        </div>
-
-        {/* Features */}
-        <div className="mt-16 text-center">
-          <Card className="glass-card p-8">
-            <h3 className="text-2xl font-bold text-foreground mb-6">Recursos da Plataforma</h3>
-            <div className="grid md:grid-cols-3 gap-6 text-left">
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">🔐 Segurança Total</h4>
-                <p className="text-sm text-muted-foreground">
-                  Hash SHA-256, assinaturas eletrônicas e registro de IP/timestamp
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">💳 Múltiplas Formas de Pagamento</h4>
-                <p className="text-sm text-muted-foreground">
-                  PIX, Boleto, Cartão de Crédito e Links de Pagamento
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">📄 Documentos Legais</h4>
-                <p className="text-sm text-muted-foreground">
-                  Acordos e notificações extrajudiciais com validade jurídica
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">🎯 Descontos Progressivos</h4>
-                <p className="text-sm text-muted-foreground">
-                  Configure regras de desconto por prazo de pagamento
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">⏰ Agendamento Automático</h4>
-                <p className="text-sm text-muted-foreground">
-                  Cobranças programadas com padrão de 48 horas
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-foreground mb-2">✅ Rastreamento Completo</h4>
-                <p className="text-sm text-muted-foreground">
-                  Histórico de eventos e logs imutáveis para auditoria
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
+      <div className="absolute top-4 right-4">
+        <Button variant="outline" size="icon" onClick={toggleTheme}>
+          {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+        </Button>
       </div>
+      
+      <Card className="glass-card w-full max-w-4xl p-8 md:p-12">
+        <div className="text-center mb-8">
+          <img src={logo} alt="MR3X" className="w-24 h-24 mx-auto mb-6 rounded-2xl" />
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">MR3X</h1>
+          <p className="text-muted-foreground text-lg">Gestão de Cobranças de Aluguéis</p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          <Link to="/acordos"><Card className="glass-card p-8 hover:scale-105 transition-all cursor-pointer"><div className="flex flex-col items-center text-center"><div className="p-4 rounded-full bg-accent/10 mb-4"><FileText className="w-12 h-12 text-accent" /></div><h2 className="text-2xl font-bold mb-2">Acordos</h2><p className="text-muted-foreground mb-4">Ver acordos cadastrados</p><Button variant="outline" className="w-full">Ver</Button></div></Card></Link>
+          <Link to="/agencia"><Card className="glass-card p-8 hover:scale-105 transition-all cursor-pointer"><div className="flex flex-col items-center text-center"><div className="p-4 rounded-full bg-primary/10 mb-4"><Building2 className="w-12 h-12 text-primary" /></div><h2 className="text-2xl font-bold mb-2">Agência</h2><p className="text-muted-foreground mb-4">Gerenciar acordos</p><Button className="gradient-primary w-full">Acessar</Button></div></Card></Link>
+          <Link to="/inquilino"><Card className="glass-card p-8 hover:scale-105 transition-all cursor-pointer"><div className="flex flex-col items-center text-center"><div className="p-4 rounded-full bg-secondary/10 mb-4"><User className="w-12 h-12 text-secondary" /></div><h2 className="text-2xl font-bold mb-2">Inquilino</h2><p className="text-muted-foreground mb-4">Visualizar e assinar</p><Button className="gradient-secondary w-full">Acessar</Button></div></Card></Link>
+        </div>
+      </Card>
     </div>
   );
 };

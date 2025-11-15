@@ -1,24 +1,42 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, CheckCircle2 } from "lucide-react";
+import { FileText, Download, CheckCircle2, ArrowLeft, Moon, Sun } from "lucide-react";
 import logo from "@/assets/mr3x-logo.png";
+import { useTheme } from "@/contexts/ThemeContext";
 import TenantAgreementView from "@/components/tenant/TenantAgreementView";
 import TenantSignature from "@/components/tenant/TenantSignature";
 
 const Tenant = () => {
   const [signed, setSigned] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <img src={logo} alt="MR3X" className="w-14 h-14 rounded-xl object-contain" />
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">MR3X — Painel Inquilino</h1>
-            <p className="text-sm text-muted-foreground">Visualize e assine seu acordo de pagamento</p>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Link to="/">
+              <img src={logo} alt="MR3X" className="w-14 h-14 rounded-xl object-contain cursor-pointer hover:opacity-80 transition-opacity" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">MR3X — Painel Inquilino</h1>
+              <p className="text-sm text-muted-foreground">Visualize e assine seu acordo de pagamento</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/">
+              <Button variant="outline" className="gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Voltar
+              </Button>
+            </Link>
+            <Button variant="outline" size="icon" onClick={toggleTheme}>
+              {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </Button>
           </div>
         </div>
 
