@@ -8,70 +8,45 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 215 30% 95%;
-    --foreground: 215 30% 10%;
-
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 215 30% 10%;
-
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 215 30% 10%;
-
+    --popover-foreground: 222 47% 11%;
     --primary: 189 94% 43%;
-    --primary-foreground: 0 0% 100%;
-
+    --primary-foreground: 210 40% 98%;
     --secondary: 338 100% 70%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 215 20% 90%;
-    --muted-foreground: 215 15% 45%;
-
+    --secondary-foreground: 210 40% 98%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
     --accent: 189 94% 43%;
-    --accent-foreground: 0 0% 100%;
-
+    --accent-foreground: 222 47% 11%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 215 20% 82%;
-    --input: 215 20% 82%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 189 94% 43%;
-
     --radius: 0.75rem;
-
-    --gradient-primary: linear-gradient(90deg, hsl(189 94% 43%), hsl(338 100% 70%));
-    --gradient-bg: linear-gradient(135deg, hsl(215 50% 8%), hsl(215 40% 15%));
-    
-    --shadow-glow: 0 10px 40px hsla(189, 94%, 43%, 0.2);
-    --shadow-card: 0 10px 30px hsla(0, 0%, 0%, 0.1);
-    
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
     --background: 215 50% 8%;
     --foreground: 189 80% 92%;
-
     --card: 215 40% 12%;
     --card-foreground: 189 80% 92%;
-
     --popover: 215 40% 12%;
     --popover-foreground: 189 80% 92%;
-
     --primary: 189 94% 43%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 338 100% 70%;
     --secondary-foreground: 0 0% 100%;
-
     --muted: 215 35% 18%;
     --muted-foreground: 189 30% 65%;
-
     --accent: 189 94% 43%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 215 30% 20%;
     --input: 215 30% 20%;
     --ring: 189 94% 43%;
@@ -84,7 +59,11 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-gradient-to-br from-[hsl(215,50%,8%)] to-[hsl(215,40%,15%)] text-foreground min-h-screen;
+    @apply bg-background text-foreground min-h-screen;
+  }
+  
+  body.dark {
+    @apply bg-gradient-to-br from-[hsl(215,50%,8%)] to-[hsl(215,40%,15%)];
   }
 }
 

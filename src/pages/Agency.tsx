@@ -1,11 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Users, DollarSign, Hash } from "lucide-react";
+import { FileText, Users, DollarSign, Hash, ArrowLeft, Moon, Sun } from "lucide-react";
 import logo from "@/assets/mr3x-logo.png";
+import { useTheme } from "@/contexts/ThemeContext";
 import AgreementForm from "@/components/agency/AgreementForm";
 import NotificationForm from "@/components/agency/NotificationForm";
 import PaymentOptions from "@/components/agency/PaymentOptions";
@@ -14,16 +14,32 @@ import DocumentPreview from "@/components/agency/DocumentPreview";
 const Agency = () => {
   const [activeTab, setActiveTab] = useState("agreement");
   const [agreementData, setAgreementData] = useState<any>(null);
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <img src={logo} alt="MR3X" className="w-16 h-16 rounded-xl object-contain" />
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">MR3X — Painel Agência</h1>
-            <p className="text-sm text-muted-foreground">Gestão de Pagamentos e Cobranças de Aluguéis</p>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Link to="/">
+              <img src={logo} alt="MR3X" className="w-16 h-16 rounded-xl object-contain cursor-pointer hover:opacity-80 transition-opacity" />
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">MR3X — Painel Agência</h1>
+              <p className="text-sm text-muted-foreground">Gestão de Pagamentos e Cobranças de Aluguéis</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/acordos">
+              <Button variant="outline" className="gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Voltar
+              </Button>
+            </Link>
+            <Button variant="outline" size="icon" onClick={toggleTheme}>
+              {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </Button>
           </div>
         </div>
 
