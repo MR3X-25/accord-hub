@@ -1,3 +1,21 @@
+export interface PaymentOption {
+  id: string;
+  method: "pix" | "boleto" | "card" | "link";
+  installments: number;
+  installmentValue: number;
+  totalValue: number;
+  discount: number;
+  dueDate?: string;
+}
+
+export interface InstallmentPlan {
+  installmentNumber: number;
+  value: number;
+  dueDate: string;
+  discount: number;
+  finalValue: number;
+}
+
 export interface AgreementData {
   id: string;
   createdAt: string;
@@ -9,22 +27,28 @@ export interface AgreementData {
   brokerCreci: string;
   creditorName: string;
   creditorCpfCnpj: string;
+  creditorEmail?: string;
   debtorName: string;
   debtorCpfCnpj: string;
+  debtorEmail?: string;
   contractId: string;
   propertyAddress: string;
+  propertyCep?: string;
+  propertyCity?: string;
+  propertyState?: string;
   debtPeriod: string;
   principalAmount: string;
   interestRate: string;
   penaltyRate: string;
   calculatedTotal: number;
-  installments?: number;
-  paymentMethods: string[];
+  paymentOptions: PaymentOption[];
+  installmentPlans?: InstallmentPlan[];
   status: "draft" | "sent" | "signed" | "paid";
   hash?: string;
   ip?: string;
   signedAt?: string;
   signedBy?: string;
+  tenantAcceptedOption?: string;
 }
 
 const STORAGE_KEY = "mr3x_agreements";

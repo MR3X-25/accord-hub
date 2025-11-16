@@ -1,176 +1,210 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Send, Hash, Calendar, MapPin } from "lucide-react";
-import logo from "@/assets/mr3x-logo.png";
+import { Download, Send } from "lucide-react";
+import { downloadPDF } from "@/lib/pdfGenerator";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DocumentPreviewProps {
   agreementData: any;
 }
 
 const DocumentPreview = ({ agreementData }: DocumentPreviewProps) => {
-  const mockHash = "a3f5b2c8d1e4f7g9h2i5j8k1l4m7n0p3q6r9s2t5u8v1w4x7y0z3";
-  const mockTimestamp = new Date().toISOString();
-  const mockIp = "200.100.50.123";
+  const { toast } = useToast();
+
+  const handleDownloadPDF = async () => {
+    if (!agreementData) {
+      toast({ title: "Erro", description: "Nenhum acordo para gerar PDF", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await downloadPDF(agreementData);
+      toast({ title: "PDF gerado", description: "Download iniciado com sucesso" });
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast({ title: "Erro", description: "Erro ao gerar PDF", variant: "destructive" });
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!agreementData || !agreementData.debtorEmail) {
+      toast({ title: "Erro", description: "Email do devedor não informado", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const agreementUrl = `${window.location.origin}/inquilino?id=${agreementData.id}`;
+
+      const { data, error } = await supabase.functions.invoke("send-agreement-email", {
+        body: {
+          to: agreementData.debtorEmail,
+          agreementId: agreementData.id,
+          debtorName: agreementData.debtorName,
+          agencyName: agreementData.agencyName,
+          totalAmount: agreementData.calculatedTotal.toFixed(2),
+          agreementUrl,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Email enviado",
+        description: `Acordo enviado para ${agreementData.debtorEmail}`,
+      });
+    } catch (error) {
+      console.error("Erro ao enviar email:", error);
+      toast({ title: "Erro", description: "Erro ao enviar email", variant: "destructive" });
+    }
+  };
+
+  if (!agreementData) {
+    return (
+      <Card className="glass-card p-6">
+        <p className="text-center text-muted-foreground">Salve o acordo para visualizar o preview.</p>
+      </Card>
+    );
+  }
+
+  const interest = (parseFloat(agreementData.principalAmount) * parseFloat(agreementData.interestRate)) / 100;
+  const penalty = (parseFloat(agreementData.principalAmount) * parseFloat(agreementData.penaltyRate)) / 100;
 
   return (
     <div className="space-y-6">
-      {/* Preview Card */}
-      <Card className="bg-white p-8 shadow-xl">
-        <div className="space-y-6">
-          {/* Header with Logo */}
-          <div className="flex items-start justify-between pb-6 border-b-2 border-gray-200">
-            <div className="flex items-center gap-4">
-              <img src={logo} alt="MR3X" className="w-20 h-20 rounded-lg" />
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">ACORDO DE PAGAMENTO</h2>
-                <p className="text-sm text-gray-600">MR3X — Gestão de Cobranças</p>
-              </div>
+      <Card className="glass-card p-8 relative overflow-hidden">
+        <div className="watermark">CONFIDENCIAL</div>
+
+        <div className="relative z-10">
+          <div className="flex items-start justify-between mb-8 pb-4 border-b">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground mb-2">ACORDO DE PAGAMENTO</h1>
+              <p className="text-sm text-muted-foreground">MR3X — Gestão de Cobranças</p>
             </div>
-            <div className="text-right text-sm text-gray-600">
-              <p>Doc ID: AGR-2024-001234</p>
-              <p>Data: {new Date().toLocaleDateString('pt-BR')}</p>
+            <div className="text-right text-sm">
+              <p className="font-semibold">Doc ID: {agreementData.id}</p>
+              <p className="text-muted-foreground">
+                Data: {new Date(agreementData.createdAt).toLocaleDateString("pt-BR")}
+              </p>
             </div>
           </div>
 
-          {/* Watermark */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
-              <p className="text-8xl font-bold text-gray-400 rotate-[-45deg]">CONFIDENCIAL</p>
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-foreground mb-3">Agência Responsável</h3>
+            <div className="grid md:grid-cols-2 gap-2 text-sm">
+              <p><span className="font-semibold">Nome:</span> {agreementData.agencyName}</p>
+              <p><span className="font-semibold">CNPJ:</span> {agreementData.agencyCnpj}</p>
+              <p className="md:col-span-2"><span className="font-semibold">Endereço:</span> {agreementData.agencyAddress}</p>
+              <p className="md:col-span-2">
+                <span className="font-semibold">Corretor:</span> {agreementData.brokerName}
+                {agreementData.brokerCreci && ` - CRECI: ${agreementData.brokerCreci}`}
+              </p>
             </div>
+          </div>
 
-            {/* Content */}
-            <div className="relative space-y-4 text-gray-900">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-bold text-lg mb-2">Credor</h3>
-                  <p>Nome: {agreementData?.creditorName || "[NOME DO CREDOR]"}</p>
-                  <p>CPF/CNPJ: {agreementData?.creditorCpfCnpj || "[CPF/CNPJ]"}</p>
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg mb-2">Devedor</h3>
-                  <p>Nome: {agreementData?.debtorName || "[NOME DO DEVEDOR]"}</p>
-                  <p>CPF/CNPJ: {agreementData?.debtorCpfCnpj || "[CPF/CNPJ]"}</p>
-                </div>
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-foreground mb-3">Credor</h3>
+              <div className="space-y-1 text-sm">
+                <p><span className="font-semibold">Nome:</span> {agreementData.creditorName}</p>
+                <p><span className="font-semibold">CPF/CNPJ:</span> {agreementData.creditorCpfCnpj}</p>
               </div>
-
-              <div>
-                <h3 className="font-bold text-lg mb-2">Objeto do Contrato</h3>
-                <p>Contrato: {agreementData?.contractId || "[Nº CONTRATO]"}</p>
-                <p>Imóvel: {agreementData?.propertyAddress || "[ENDEREÇO DO IMÓVEL]"}</p>
-                <p>Período em Atraso: {agreementData?.debtPeriod || "[PERÍODO]"}</p>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg mb-2">Valores</h3>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span>Valor Principal:</span>
-                    <span className="font-semibold">R$ {agreementData?.principalAmount || "0.00"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Juros ({agreementData?.interestRate || "2"}%):</span>
-                    <span className="font-semibold">R$ {
-                      ((parseFloat(agreementData?.principalAmount || "0") * parseFloat(agreementData?.interestRate || "2")) / 100).toFixed(2)
-                    }</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Multa ({agreementData?.penaltyRate || "10"}%):</span>
-                    <span className="font-semibold">R$ {
-                      ((parseFloat(agreementData?.principalAmount || "0") * parseFloat(agreementData?.penaltyRate || "10")) / 100).toFixed(2)
-                    }</span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t-2 border-gray-300">
-                    <span className="font-bold text-lg">Total:</span>
-                    <span className="font-bold text-lg">R$ {agreementData?.calculatedTotal?.toFixed(2) || "0.00"}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg mb-2">Cláusulas do Acordo</h3>
-                <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>O devedor reconhece o débito acima descrito e se compromete a quitá-lo conforme os termos deste acordo.</li>
-                  <li>O pagamento poderá ser efetuado através das formas disponibilizadas: PIX, boleto bancário, cartão de crédito ou link de pagamento.</li>
-                  <li>Em caso de inadimplência das parcelas acordadas, o credor poderá adotar medidas judiciais cabíveis.</li>
-                  <li>Este documento possui validade jurídica e é autenticado por hash criptográfico SHA-256.</li>
-                </ol>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground mb-3">Devedor</h3>
+              <div className="space-y-1 text-sm">
+                <p><span className="font-semibold">Nome:</span> {agreementData.debtorName}</p>
+                <p><span className="font-semibold">CPF/CNPJ:</span> {agreementData.debtorCpfCnpj}</p>
               </div>
             </div>
           </div>
 
-          {/* Digital Signature Section */}
-          <div className="pt-6 border-t-2 border-gray-200">
-            <p className="text-sm text-gray-600 mb-4">Assinaturas Eletrônicas:</p>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="font-semibold text-gray-900">Credor</p>
-                <p className="text-sm text-gray-600">___________________________</p>
-                <p className="text-xs text-gray-500 mt-1">(Assinatura Eletrônica)</p>
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-foreground mb-3">Objeto do Contrato</h3>
+            <div className="space-y-1 text-sm">
+              <p><span className="font-semibold">Contrato:</span> {agreementData.contractId}</p>
+              <p><span className="font-semibold">Imóvel:</span> {agreementData.propertyAddress}</p>
+              {agreementData.propertyCity && (
+                <p><span className="font-semibold">Cidade/UF:</span> {agreementData.propertyCity} - {agreementData.propertyState}</p>
+              )}
+              <p><span className="font-semibold">Período em Atraso:</span> {agreementData.debtPeriod}</p>
+            </div>
+          </div>
+
+          <div className="mb-6 p-4 bg-primary/5 rounded-lg">
+            <h3 className="text-lg font-bold text-foreground mb-3">Valores</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Valor Principal:</span>
+                <span className="font-semibold">R$ {agreementData.principalAmount}</span>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="font-semibold text-gray-900">Devedor</p>
-                <p className="text-sm text-gray-600">___________________________</p>
-                <p className="text-xs text-gray-500 mt-1">(Assinatura Eletrônica)</p>
+              <div className="flex justify-between">
+                <span>Juros ({agreementData.interestRate}%):</span>
+                <span className="font-semibold">R$ {interest.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Multa ({agreementData.penaltyRate}%):</span>
+                <span className="font-semibold">R$ {penalty.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-lg font-bold text-primary pt-2 border-t">
+                <span>Total:</span>
+                <span>R$ {agreementData.calculatedTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
+
+          {agreementData.paymentOptions && agreementData.paymentOptions.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-foreground mb-3">Formas de Pagamento Disponíveis</h3>
+              <div className="space-y-2 text-sm">
+                {agreementData.paymentOptions.map((option: any, index: number) => (
+                  <div key={index} className="p-3 border rounded-lg">
+                    <p className="font-semibold capitalize">{option.method.replace("_", " ")}</p>
+                    <p className="text-muted-foreground">
+                      {option.installments}x de R$ {option.installmentValue.toFixed(2)} = R$ {option.totalValue.toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {agreementData.hash && (
+            <div className="mt-8 pt-4 border-t text-xs text-muted-foreground">
+              <p><span className="font-semibold">Hash SHA-256:</span> {agreementData.hash}</p>
+              <p><span className="font-semibold">IP:</span> {agreementData.ip} | <span className="font-semibold">Data/Hora UTC:</span> {agreementData.createdAt}</p>
+            </div>
+          )}
         </div>
       </Card>
 
-      {/* Metadata Card */}
-      <Card className="glass-card p-6">
-        <h3 className="text-lg font-semibold mb-4 text-foreground flex items-center gap-2">
-          <Hash className="w-5 h-5 text-primary" />
-          Metadados do Documento
-        </h3>
-        <div className="space-y-4">
-          <div>
-            <Label className="text-xs text-muted-foreground">Hash SHA-256</Label>
-            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg border border-blue-200 dark:border-blue-800 mt-1">
-              <p className="text-xs font-mono break-all text-blue-900 dark:text-blue-100">{mockHash}</p>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Calendar className="w-4 h-4 text-primary" />
-                <Label className="text-xs text-muted-foreground">Timestamp UTC</Label>
-              </div>
-              <p className="text-sm font-mono bg-muted px-3 py-2 rounded">{mockTimestamp}</p>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <MapPin className="w-4 h-4 text-primary" />
-                <Label className="text-xs text-muted-foreground">IP de Origem</Label>
-              </div>
-              <p className="text-sm font-mono bg-muted px-3 py-2 rounded">{mockIp}</p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Action Buttons */}
-      <div className="grid md:grid-cols-3 gap-3">
-        <Button variant="outline" className="gap-2">
-          <FileText className="w-4 h-4" />
-          Editar
-        </Button>
-        <Button className="gap-2 gradient-primary">
+      <div className="flex gap-3 justify-end">
+        <Button onClick={handleDownloadPDF} variant="outline" className="gap-2">
           <Download className="w-4 h-4" />
-          Gerar PDF
+          Baixar PDF
         </Button>
-        <Button variant="outline" className="gap-2">
+        <Button onClick={handleSendEmail} className="gap-2 gradient-primary">
           <Send className="w-4 h-4" />
-          Enviar por E-mail
+          Enviar para Inquilino
         </Button>
       </div>
+
+      <style>{`
+        .watermark {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-45deg);
+          font-size: 4rem;
+          font-weight: bold;
+          color: rgba(200, 200, 200, 0.1);
+          pointer-events: none;
+          user-select: none;
+          white-space: nowrap;
+        }
+      `}</style>
     </div>
   );
 };
-
-const Label = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <label className={`block font-semibold ${className}`}>{children}</label>
-);
 
 export default DocumentPreview;
