@@ -1,165 +1,142 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { QrCode, CreditCard, Barcode, Link as LinkIcon, Clock } from "lucide-react";
+import { CreditCard, Smartphone, FileText, Link as LinkIcon, Save } from "lucide-react";
+import { PaymentOption } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
+import { saveAgreement, getAgreementById } from "@/lib/storage";
+import { useSearchParams } from "react-router-dom";
+import InstallmentPlanner from "./InstallmentPlanner";
 
 interface PaymentOptionsProps {
   agreementData: any;
 }
 
 const PaymentOptions = ({ agreementData }: PaymentOptionsProps) => {
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const [selectedMethods, setSelectedMethods] = useState<string[]>(["pix"]);
-  const [scheduleHours, setScheduleHours] = useState("48");
+  const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
+  const [installmentPlans, setInstallmentPlans] = useState<any[]>([]);
 
   const paymentMethods = [
-    {
-      id: "pix",
-      name: "PIX",
-      icon: QrCode,
-      description: "QR Code dinâmico com confirmação instantânea",
-      available: true,
-    },
-    {
-      id: "boleto",
-      name: "Boleto Bancário",
-      icon: Barcode,
-      description: "Código de barras e linha digitável",
-      available: true,
-    },
-    {
-      id: "card",
-      name: "Cartão de Crédito",
-      icon: CreditCard,
-      description: "Parcelamento em até 12x",
-      available: true,
-    },
-    {
-      id: "link",
-      name: "Link de Pagamento",
-      icon: LinkIcon,
-      description: "URL única para pagamento online",
-      available: true,
-    },
+    { id: "pix", name: "PIX", icon: Smartphone, description: "Pagamento instantâneo via QR Code", color: "text-cyan-500" },
+    { id: "boleto", name: "Boleto Bancário", icon: FileText, description: "Pagamento via boleto com código de barras", color: "text-orange-500" },
+    { id: "card", name: "Cartão de Crédito", icon: CreditCard, description: "Parcelamento em até 12x", color: "text-purple-500" },
+    { id: "link", name: "Link de Pagamento", icon: LinkIcon, description: "Link único para múltiplas formas", color: "text-blue-500" },
   ];
 
   const toggleMethod = (methodId: string) => {
-    if (selectedMethods.includes(methodId)) {
-      setSelectedMethods(selectedMethods.filter(id => id !== methodId));
-    } else {
-      setSelectedMethods([...selectedMethods, methodId]);
-    }
+    setSelectedMethods((prev) =>
+      prev.includes(methodId) ? prev.filter((id) => id !== methodId) : [...prev, methodId]
+    );
   };
 
-  const handleGeneratePayment = () => {
+  const handleSavePaymentOptions = () => {
     if (selectedMethods.length === 0) {
-      toast({
-        title: "Erro",
-        description: "Selecione pelo menos uma forma de pagamento",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Selecione ao menos uma forma de pagamento", variant: "destructive" });
       return;
     }
 
+    if (installmentPlans.length === 0) {
+      toast({ title: "Erro", description: "Configure o plano de parcelas", variant: "destructive" });
+      return;
+    }
+
+    const id = searchParams.get("id");
+    if (!id) {
+      toast({ title: "Erro", description: "Salve o acordo primeiro", variant: "destructive" });
+      return;
+    }
+
+    const agreement = getAgreementById(id);
+    if (!agreement) {
+      toast({ title: "Erro", description: "Acordo não encontrado", variant: "destructive" });
+      return;
+    }
+
+    const paymentOptions: PaymentOption[] = selectedMethods.map((method) => ({
+      id: `${method}-${Date.now()}`,
+      method: method as any,
+      installments: installmentPlans.length,
+      installmentValue: installmentPlans[0]?.finalValue || 0,
+      totalValue: installmentPlans.reduce((sum, p) => sum + p.finalValue, 0),
+      discount: installmentPlans[0]?.discount || 0,
+      dueDate: installmentPlans[0]?.dueDate,
+    }));
+
+    const updatedAgreement = {
+      ...agreement,
+      paymentOptions,
+      installmentPlans,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveAgreement(updatedAgreement);
+
     toast({
-      title: "Formas de Pagamento Geradas",
-      description: `${selectedMethods.length} método(s) criado(s). Agendamento: ${scheduleHours}h`,
+      title: "Formas de pagamento salvas",
+      description: `${selectedMethods.length} forma(s) de pagamento configurada(s) com ${installmentPlans.length} parcela(s)`,
     });
   };
 
+  if (!agreementData || !agreementData.calculatedTotal) {
+    return (
+      <Card className="glass-card p-6">
+        <p className="text-center text-muted-foreground">Salve o acordo primeiro para configurar formas de pagamento.</p>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <Card className="p-6 bg-card/50">
-        <h3 className="text-lg font-semibold mb-4 text-foreground">Formas de Pagamento</h3>
+      <Card className="glass-card p-6">
+        <h3 className="text-xl font-bold mb-4 text-foreground">Formas de Pagamento Disponíveis</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Selecione as formas de pagamento que deseja disponibilizar para o devedor.
+          Selecione as formas de pagamento que o inquilino poderá escolher
         </p>
 
         <div className="grid md:grid-cols-2 gap-4">
-          {paymentMethods.map((method) => {
-            const Icon = method.icon;
-            const isSelected = selectedMethods.includes(method.id);
-
-            return (
-              <div
-                key={method.id}
-                className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                  isSelected
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-card hover:border-primary/50"
-                }`}
-                onClick={() => toggleMethod(method.id)}
-              >
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={isSelected}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon className="w-5 h-5 text-primary" />
-                      <h4 className="font-semibold text-foreground">{method.name}</h4>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{method.description}</p>
+          {paymentMethods.map((method) => (
+            <div
+              key={method.id}
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                selectedMethods.includes(method.id)
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/50"
+              }`}
+              onClick={() => toggleMethod(method.id)}
+            >
+              <div className="flex items-start gap-3">
+                <Checkbox checked={selectedMethods.includes(method.id)} onCheckedChange={() => toggleMethod(method.id)} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <method.icon className={`w-5 h-5 ${method.color}`} />
+                    <h4 className="font-semibold text-foreground">{method.name}</h4>
                   </div>
-                  {method.available && (
-                    <Badge variant="secondary" className="absolute top-2 right-2">
-                      Disponível
-                    </Badge>
-                  )}
+                  <p className="text-sm text-muted-foreground">{method.description}</p>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </Card>
 
-      <Card className="p-6 bg-card/50">
-        <h3 className="text-lg font-semibold mb-4 text-foreground flex items-center gap-2">
-          <Clock className="w-5 h-5 text-primary" />
-          Agendamento de Cobrança
-        </h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Configure quando a cobrança será ativada e enviada ao devedor.
-        </p>
+      {selectedMethods.length > 0 && (
+        <InstallmentPlanner
+          totalAmount={agreementData.calculatedTotal}
+          onPlansChange={setInstallmentPlans}
+        />
+      )}
 
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="scheduleHours">Ativar cobrança em (horas)</Label>
-            <Input
-              id="scheduleHours"
-              type="number"
-              value={scheduleHours}
-              onChange={(e) => setScheduleHours(e.target.value)}
-              placeholder="48"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Padrão: 48 horas. A cobrança será criada e enviada automaticamente após este período.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-foreground">Cobrança Agendada</p>
-              <p className="text-xs text-muted-foreground">
-                Será ativada em: {new Date(Date.now() + parseInt(scheduleHours) * 60 * 60 * 1000).toLocaleString('pt-BR')}
-              </p>
-            </div>
-          </div>
+      {selectedMethods.length > 0 && installmentPlans.length > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={handleSavePaymentOptions} className="gap-2 gradient-primary">
+            <Save className="w-4 h-4" />
+            Salvar Formas de Pagamento
+          </Button>
         </div>
-      </Card>
-
-      <Button onClick={handleGeneratePayment} className="w-full gradient-primary">
-        Gerar Formas de Pagamento ({selectedMethods.length} selecionada{selectedMethods.length !== 1 ? 's' : ''})
-      </Button>
+      )}
     </div>
   );
 };

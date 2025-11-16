@@ -3,12 +3,12 @@ import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 import { AgreementData } from "./storage";
 
-export const generatePDF = async (agreement: AgreementData): Promise<void> => {
+export const generatePDF = async (agreement: AgreementData): Promise<Blob> => {
   const doc = new jsPDF();
   
-  // Watermark
+  // Watermark CONFIDENCIAL
   doc.setFontSize(60);
-  doc.setTextColor(220, 220, 220);
+  doc.setTextColor(230, 230, 230);
   doc.saveGraphicsState();
   doc.text("CONFIDENCIAL", 105, 150, {
     angle: 45,
@@ -128,6 +128,17 @@ export const generatePDF = async (agreement: AgreementData): Promise<void> => {
   doc.text("(Credor)", 15, y);
   doc.text("(Devedor)", 110, y);
   
-  // Save
-  doc.save(`acordo_${agreement.id}.pdf`);
+  // Retorna o PDF como Blob para download ou envio
+  return doc.output('blob');
+};
+
+// Função auxiliar para download do PDF
+export const downloadPDF = async (agreement: AgreementData): Promise<void> => {
+  const pdfBlob = await generatePDF(agreement);
+  const url = URL.createObjectURL(pdfBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `acordo_${agreement.id}.pdf`;
+  link.click();
+  URL.revokeObjectURL(url);
 };
