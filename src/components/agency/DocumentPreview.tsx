@@ -76,12 +76,10 @@ const DocumentPreview = ({ agreementData }: DocumentPreviewProps) => {
         <div className="watermark">CONFIDENCIAL</div>
 
         <div className="relative z-10">
-          <div className="flex items-start justify-between mb-8 pb-4 border-b">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground mb-2">ACORDO DE PAGAMENTO</h1>
-              <p className="text-sm text-muted-foreground">MR3X — Gestão de Cobranças</p>
-            </div>
-            <div className="text-right text-sm">
+          <div className="mb-8 pb-4 border-b text-center">
+            <h1 className="text-3xl font-bold text-foreground mb-2">ACORDO DE PAGAMENTO</h1>
+            <p className="text-lg font-serif italic text-muted-foreground">MR3X - Gestão e Tecnologia em Pagamentos de Aluguéis</p>
+            <div className="mt-4 text-sm">
               <p className="font-semibold">Doc ID: {agreementData.id}</p>
               <p className="text-muted-foreground">
                 Data: {new Date(agreementData.createdAt).toLocaleDateString("pt-BR")}

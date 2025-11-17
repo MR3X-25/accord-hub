@@ -83,7 +83,23 @@ const Tenant = () => {
           <Card className="glass-card p-6 mt-6">
             <h3 className="text-lg font-semibold mb-4 text-foreground">Documentos Disponíveis</h3>
             <div className="flex flex-col gap-3">
-              <Button variant="outline" className="justify-start gap-3">
+              <Button 
+                variant="outline" 
+                className="justify-start gap-3"
+                onClick={async () => {
+                  const { useSearchParams } = await import("react-router-dom");
+                  const [searchParams] = useSearchParams();
+                  const id = searchParams.get("id");
+                  if (id) {
+                    const { getAgreementById } = await import("@/lib/storage");
+                    const { downloadPDF } = await import("@/lib/pdfGenerator");
+                    const agreement = getAgreementById(id);
+                    if (agreement) {
+                      await downloadPDF(agreement);
+                    }
+                  }
+                }}
+              >
                 <Download className="w-4 h-4" />
                 Baixar Acordo em PDF
               </Button>
