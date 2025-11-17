@@ -48,6 +48,8 @@ export interface AgreementData {
   ip?: string;
   signedAt?: string;
   signedBy?: string;
+  latitude?: number;
+  longitude?: number;
   tenantAcceptedOption?: string;
 }
 

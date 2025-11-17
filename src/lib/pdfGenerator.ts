@@ -22,14 +22,20 @@ export const generatePDF = async (agreement: AgreementData): Promise<Blob> => {
     doc.addImage(logo.src, "PNG", 15, 10, 30, 30);
   }
   
-  // Header
-  doc.setFontSize(16);
+  // Header - Centralized
+  doc.setFontSize(18);
   doc.setTextColor(0, 0, 0);
-  doc.text("ACORDO DE PAGAMENTO", 50, 20);
-  doc.setFontSize(10);
-  doc.text("MR3X - Gestão de Cobranças", 50, 27);
-  doc.text(`Doc ID: ${agreement.id}`, 150, 20);
-  doc.text(`Data: ${new Date(agreement.createdAt).toLocaleDateString("pt-BR")}`, 150, 27);
+  doc.setFont(undefined, "bold");
+  doc.text("ACORDO DE PAGAMENTO", 105, 20, { align: "center" });
+  
+  doc.setFontSize(12);
+  doc.setFont("times", "italic");
+  doc.text("MR3X - Gestão e Tecnologia em Pagamentos de Aluguéis", 105, 28, { align: "center" });
+  
+  doc.setFontSize(8);
+  doc.setFont(undefined, "normal");
+  doc.text(`Doc ID: ${agreement.id}`, 150, 38);
+  doc.text(`Data: ${new Date(agreement.createdAt).toLocaleDateString("pt-BR")}`, 150, 43);
   
   // Dados da Agência
   let y = 50;
@@ -112,21 +118,29 @@ export const generatePDF = async (agreement: AgreementData): Promise<Blob> => {
   y += 4;
   doc.text(`IP: ${agreement.ip} | Data/Hora UTC: ${agreement.createdAt}`, 15, y);
   
-  // Assinaturas
-  y += 10;
-  doc.setFontSize(10);
-  doc.setFont(undefined, "bold");
-  doc.text("Assinaturas Eletrônicas:", 15, y);
-  doc.setFont(undefined, "normal");
-  y += 7;
-  doc.text("_____________________________", 15, y);
-  doc.text("_____________________________", 110, y);
-  y += 5;
-  doc.text(`${agreement.creditorName}`, 15, y);
-  doc.text(`${agreement.debtorName}`, 110, y);
-  y += 4;
-  doc.text("(Credor)", 15, y);
-  doc.text("(Devedor)", 110, y);
+  // Assinatura Eletrônica do Inquilino
+  if (agreement.signedAt && agreement.signedBy) {
+    y += 10;
+    doc.setFontSize(10);
+    doc.setFont(undefined, "bold");
+    doc.text("Assinatura Eletrônica do Inquilino:", 15, y);
+    doc.setFont(undefined, "normal");
+    y += 7;
+    doc.text(`Assinado por: ${agreement.signedBy}`, 15, y);
+    y += 5;
+    doc.text(`Data/Hora: ${new Date(agreement.signedAt).toLocaleString("pt-BR")}`, 15, y);
+    y += 5;
+    doc.text(`IP: ${agreement.ip || "N/A"}`, 15, y);
+    y += 5;
+    
+    // Geolocalização (placeholder - será implementado no momento da assinatura)
+    if (agreement.latitude && agreement.longitude) {
+      const mapLink = `https://www.google.com/maps?q=${agreement.latitude},${agreement.longitude}`;
+      doc.setTextColor(0, 0, 255);
+      doc.textWithLink(`Localização: ${agreement.latitude}, ${agreement.longitude}`, 15, y, { url: mapLink });
+      doc.setTextColor(0, 0, 0);
+    }
+  }
   
   // Retorna o PDF como Blob para download ou envio
   return doc.output('blob');

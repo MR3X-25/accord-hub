@@ -1,204 +1,280 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, CheckCircle2, XCircle, FileText, Calendar, MapPin, User } from "lucide-react";
+import { Upload, Search, CheckCircle2, XCircle, MapPin, Download, Eye, Moon, Sun } from "lucide-react";
 import logo from "@/assets/mr3x-logo.png";
+import { useTheme } from "@/contexts/ThemeContext";
+import { getAgreementById } from "@/lib/storage";
+import { useToast } from "@/hooks/use-toast";
+import { downloadPDF } from "@/lib/pdfGenerator";
 
 const Verify = () => {
-  const [hash, setHash] = useState("");
+  const [searchType, setSearchType] = useState<"hash" | "contract">("contract");
+  const [searchValue, setSearchValue] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [verificationResult, setVerificationResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { theme, toggleTheme } = useTheme();
+  const { toast } = useToast();
 
   const handleVerify = () => {
-    setLoading(true);
-    // Simulate verification
-    setTimeout(() => {
+    if (!searchValue && !uploadedFile) {
+      toast({ title: "Erro", description: "Informe um número de contrato/hash ou faça upload de um arquivo", variant: "destructive" });
+      return;
+    }
+
+    const agreement = getAgreementById(searchValue);
+    
+    if (agreement) {
       setVerificationResult({
-        valid: true,
-        documentId: "AGR-2024-001234",
-        hash: hash || "a3f5b2...9d8c4e",
-        createdAt: "2024-11-15T10:30:00Z",
-        createdBy: "Imobiliária Alpha",
-        ip: "200.100.50.123",
-        signatures: [
-          {
-            name: "João Silva",
-            cpf: "XXX.XXX.123-45",
-            method: "Assinatura Eletrônica Simples",
-            timestamp: "2024-11-15T11:45:00Z"
-          }
-        ],
-        status: "VÁLIDO"
+        status: "verified",
+        document: agreement,
+        verified: true,
       });
-      setLoading(false);
-    }, 1500);
+      toast({ title: "Verificado", description: "Documento encontrado e verificado com sucesso" });
+    } else {
+      setVerificationResult({
+        status: "not_found",
+        verified: false,
+      });
+      toast({ title: "Não encontrado", description: "Documento não encontrado no sistema", variant: "destructive" });
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type === "application/pdf") {
+        setUploadedFile(file);
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+        toast({ title: "Arquivo carregado", description: `${file.name} carregado com sucesso` });
+      } else {
+        toast({ title: "Erro", description: "Apenas arquivos PDF são aceitos", variant: "destructive" });
+      }
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!verificationResult?.document) return;
+    
+    try {
+      await downloadPDF(verificationResult.document);
+      toast({ title: "PDF baixado", description: "Download iniciado com sucesso" });
+    } catch (error) {
+      console.error("Erro ao baixar PDF:", error);
+      toast({ title: "Erro", description: "Erro ao baixar PDF", variant: "destructive" });
+    }
   };
 
   return (
     <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <img src={logo} alt="MR3X" className="w-16 h-16 rounded-xl object-contain" />
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Verificador de Documentos</h1>
-            <p className="text-sm text-muted-foreground">Verifique a autenticidade e integridade de documentos MR3X</p>
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Link to="/">
+              <img src={logo} alt="MR3X" className="w-14 h-14 rounded-xl object-contain cursor-pointer hover:opacity-80 transition-opacity" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">MR3X — Verificador de Documentos</h1>
+              <p className="text-sm text-muted-foreground">Verifique a autenticidade e localize documentos</p>
+            </div>
           </div>
+          <Button variant="outline" size="icon" onClick={toggleTheme}>
+            {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </Button>
         </div>
 
-        {/* Verification Form */}
-        <Card className="glass-card shadow-2xl p-6 mb-8">
+        <Card className="glass-card p-6 mb-6">
+          <h2 className="text-xl font-bold text-foreground mb-4">Buscar Documento</h2>
+          
           <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                variant={searchType === "contract" ? "default" : "outline"}
+                onClick={() => setSearchType("contract")}
+                className="flex-1"
+              >
+                Número do Contrato
+              </Button>
+              <Button
+                variant={searchType === "hash" ? "default" : "outline"}
+                onClick={() => setSearchType("hash")}
+                className="flex-1"
+              >
+                Hash SHA-256
+              </Button>
+            </div>
+
             <div>
-              <Label htmlFor="hash" className="text-foreground">Hash do Documento (SHA-256)</Label>
-              <div className="flex gap-3 mt-2">
+              <Label htmlFor="search">
+                {searchType === "contract" ? "Número do Contrato (MR3X-ACD-XXXX-XXXXXX)" : "Hash SHA-256"}
+              </Label>
+              <div className="flex gap-2 mt-2">
                 <Input
-                  id="hash"
-                  placeholder="Cole o hash SHA-256 do documento aqui..."
-                  value={hash}
-                  onChange={(e) => setHash(e.target.value)}
-                  className="font-mono text-sm"
+                  id="search"
+                  placeholder={searchType === "contract" ? "MR3X-ACD-2024-123456" : "Digite o hash SHA-256"}
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
                 />
-                <Button 
-                  onClick={handleVerify} 
-                  disabled={loading}
-                  className="gradient-primary shrink-0"
-                >
-                  <Search className="w-4 h-4 mr-2" />
-                  {loading ? "Verificando..." : "Verificar"}
+                <Button onClick={handleVerify} className="gap-2">
+                  <Search className="w-4 h-4" />
+                  Verificar
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                O hash pode ser encontrado no documento PDF ou através do QR Code
-              </p>
+            </div>
+
+            <div className="border-t pt-4">
+              <Label htmlFor="file-upload">Ou faça upload do documento PDF</Label>
+              <div className="mt-2">
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors">
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      {uploadedFile ? uploadedFile.name : "Clique para selecionar ou arraste um arquivo PDF"}
+                    </p>
+                  </div>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+              </div>
             </div>
           </div>
         </Card>
 
-        {/* Verification Result */}
-        {verificationResult && (
-          <Card className="glass-card shadow-2xl p-6">
-            <div className="space-y-6">
-              {/* Status Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-border">
-                <div className="flex items-center gap-3">
-                  {verificationResult.valid ? (
-                    <CheckCircle2 className="w-8 h-8 text-green-500" />
-                  ) : (
-                    <XCircle className="w-8 h-8 text-red-500" />
-                  )}
-                  <div>
-                    <h3 className="text-xl font-bold text-foreground">
-                      {verificationResult.valid ? "Documento Válido" : "Documento Inválido"}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {verificationResult.valid 
-                        ? "O documento é autêntico e não foi alterado" 
-                        : "O documento pode ter sido modificado ou não existe"}
-                    </p>
-                  </div>
-                </div>
-                <Badge variant={verificationResult.valid ? "default" : "destructive"} className="text-lg px-4 py-2">
-                  {verificationResult.status}
-                </Badge>
-              </div>
-
-              {/* Document Details */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-4 h-4 text-primary" />
-                      <Label className="text-foreground font-semibold">ID do Documento</Label>
-                    </div>
-                    <p className="text-sm font-mono bg-muted px-3 py-2 rounded">{verificationResult.documentId}</p>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4 text-primary" />
-                      <Label className="text-foreground font-semibold">Criado Por</Label>
-                    </div>
-                    <p className="text-sm bg-muted px-3 py-2 rounded">{verificationResult.createdBy}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calendar className="w-4 h-4 text-primary" />
-                      <Label className="text-foreground font-semibold">Data de Criação (UTC)</Label>
-                    </div>
-                    <p className="text-sm bg-muted px-3 py-2 rounded">
-                      {new Date(verificationResult.createdAt).toLocaleString('pt-BR')}
-                    </p>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      <Label className="text-foreground font-semibold">IP de Origem</Label>
-                    </div>
-                    <p className="text-sm font-mono bg-muted px-3 py-2 rounded">{verificationResult.ip}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hash */}
-              <div>
-                <Label className="text-foreground font-semibold mb-2 block">Hash SHA-256</Label>
-                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs font-mono break-all text-blue-900 dark:text-blue-100">
-                    {verificationResult.hash}
-                  </p>
-                </div>
-              </div>
-
-              {/* Signatures */}
-              {verificationResult.signatures && verificationResult.signatures.length > 0 && (
-                <div>
-                  <Label className="text-foreground font-semibold mb-3 block">Assinaturas Eletrônicas</Label>
-                  <div className="space-y-3">
-                    {verificationResult.signatures.map((sig: any, idx: number) => (
-                      <div key={idx} className="bg-muted p-4 rounded-lg">
-                        <div className="grid md:grid-cols-2 gap-3">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Nome</p>
-                            <p className="text-sm font-semibold">{sig.name}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">CPF</p>
-                            <p className="text-sm font-mono">{sig.cpf}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Método</p>
-                            <p className="text-sm">{sig.method}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Data/Hora</p>
-                            <p className="text-sm">{new Date(sig.timestamp).toLocaleString('pt-BR')}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-border">
-                <Button variant="outline" className="flex-1">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Visualizar PDF Original
+        {previewUrl && (
+          <Card className="glass-card p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-foreground">Preview do Documento</h2>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => window.open(previewUrl, "_blank")}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Abrir em Nova Aba
                 </Button>
-                <Button variant="outline" className="flex-1">
-                  Reportar Divergência
+                <Button variant="outline" size="sm" onClick={() => {
+                  const link = document.createElement("a");
+                  link.href = previewUrl;
+                  link.download = uploadedFile?.name || "documento.pdf";
+                  link.click();
+                }}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar
                 </Button>
               </div>
             </div>
+            <iframe
+              src={previewUrl}
+              className="w-full h-[600px] rounded-lg border"
+              title="PDF Preview"
+            />
+          </Card>
+        )}
+
+        {verificationResult && (
+          <Card className="glass-card p-6">
+            <div className="flex items-center gap-3 mb-6">
+              {verificationResult.verified ? (
+                <>
+                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Documento Verificado</h2>
+                    <p className="text-sm text-muted-foreground">Este documento é autêntico e válido</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-8 h-8 text-red-500" />
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Documento Não Encontrado</h2>
+                    <p className="text-sm text-muted-foreground">Não foi possível verificar este documento</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {verificationResult.verified && verificationResult.document && (
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4 p-4 bg-primary/5 rounded-lg">
+                  <div>
+                    <p className="text-sm text-muted-foreground">ID do Documento</p>
+                    <p className="font-semibold">{verificationResult.document.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <Badge>{verificationResult.document.status}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Credor</p>
+                    <p className="font-semibold">{verificationResult.document.creditorName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Devedor</p>
+                    <p className="font-semibold">{verificationResult.document.debtorName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Data de Criação</p>
+                    <p className="font-semibold">
+                      {new Date(verificationResult.document.createdAt).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Valor Total</p>
+                    <p className="font-semibold">R$ {verificationResult.document.calculatedTotal.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {verificationResult.document.hash && (
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Hash SHA-256</p>
+                    <p className="font-mono text-xs break-all">{verificationResult.document.hash}</p>
+                  </div>
+                )}
+
+                {verificationResult.document.signedAt && (
+                  <div className="p-4 border-l-4 border-l-green-500 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <h3 className="font-bold mb-2">Assinatura Eletrônica</h3>
+                    <div className="space-y-2 text-sm">
+                      <p><span className="font-semibold">Assinado por:</span> {verificationResult.document.signedBy}</p>
+                      <p><span className="font-semibold">Data/Hora:</span> {new Date(verificationResult.document.signedAt).toLocaleString("pt-BR")}</p>
+                      <p><span className="font-semibold">IP:</span> {verificationResult.document.ip || "N/A"}</p>
+                      
+                      {verificationResult.document.latitude && verificationResult.document.longitude && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          <a
+                            href={`https://www.google.com/maps?q=${verificationResult.document.latitude},${verificationResult.document.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Ver Localização no Mapa ({verificationResult.document.latitude}, {verificationResult.document.longitude})
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3 justify-end pt-4">
+                  <Button variant="outline" onClick={handleDownloadPDF}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Baixar PDF Original
+                  </Button>
+                  <Button variant="outline">
+                    Reportar Divergência
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         )}
       </div>
