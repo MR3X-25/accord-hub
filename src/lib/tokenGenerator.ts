@@ -5,36 +5,16 @@ export const generateAgreementToken = (): string => {
   return `MR3X-ACD-${year}-${random}`;
 };
 
-// Valida formato de token de contrato MR3X-CTR-YYYY-XXXXXX
+// Valida formato de token de contrato - aceita qualquer formato com pelo menos 3 caracteres
 export const validateContractToken = (token: string): { valid: boolean; message?: string } => {
-  if (!token) {
-    return { valid: false, message: "Token do contrato é obrigatório" };
-  }
-
-  const pattern = /^MR3X-CTR-(\d{4})-\d+$/;
-  const match = token.match(pattern);
-
-  if (!match) {
-    return {
-      valid: false,
-      message: 'Formato inválido. Use: MR3X-CTR-[ANO]-[NÚMERO]'
-    };
-  }
-
-  const tokenYear = parseInt(match[1]);
-  const currentYear = new Date().getFullYear();
-
-  if (tokenYear > currentYear) {
-    return {
-      valid: false,
-      message: `Ano do token (${tokenYear}) não pode ser maior que o ano atual (${currentYear})`
-    };
+  if (!token || token.trim().length < 3) {
+    return { valid: false, message: "Número do contrato é obrigatório (mínimo 3 caracteres)" };
   }
 
   return { valid: true };
 };
 
-// Formata token de contrato (adiciona traços se necessário)
+// Formata token de contrato - permite alfanuméricos, traços e underscores
 export const formatContractToken = (value: string): string => {
-  return value.toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  return value.toUpperCase().replace(/[^A-Z0-9\-_]/g, "");
 };

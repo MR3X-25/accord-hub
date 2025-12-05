@@ -163,7 +163,7 @@ const AgreementForm = ({ onDataChange }: AgreementFormProps) => {
 
     const contractValidation = validateContractToken(formData.contractId);
     if (!contractValidation.valid) {
-      toast({ title: "Token de contrato inválido", description: contractValidation.message, variant: "destructive" });
+      toast({ title: "Contrato inválido", description: contractValidation.message, variant: "destructive" });
       return;
     }
 
@@ -249,8 +249,8 @@ const AgreementForm = ({ onDataChange }: AgreementFormProps) => {
           <h3 className="text-lg font-semibold mb-3 text-foreground">Contrato</h3>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <Label>Token do Contrato * (MR3X-CTR-YYYY-XXXXX)</Label>
-              <Input value={formData.contractId} onChange={(e) => handleContractIdChange(e.target.value)} placeholder="MR3X-CTR-2025-123456" />
+              <Label>Número do Contrato *</Label>
+              <Input value={formData.contractId} onChange={(e) => handleContractIdChange(e.target.value)} placeholder="Ex: CTR-2025-001 ou 12345" />
             </div>
             <div><Label>Período Atraso *</Label><Input value={formData.debtPeriod} onChange={(e) => setFormData({ ...formData, debtPeriod: e.target.value })} placeholder="Ex: Jan/2025 a Mar/2025" /></div>
             <div>
