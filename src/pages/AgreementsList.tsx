@@ -6,7 +6,7 @@ import { FileText, Plus, Eye, Trash2, Download } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/mr3x-logo.png";
 import { getAgreements, deleteAgreement, AgreementData } from "@/lib/storage";
-import { generatePDF } from "@/lib/pdfGenerator";
+import { downloadPDF } from "@/lib/pdfGenerator";
 import { useToast } from "@/hooks/use-toast";
 
 const AgreementsList = () => {
@@ -36,12 +36,13 @@ const AgreementsList = () => {
 
   const handleDownloadPDF = async (agreement: AgreementData) => {
     try {
-      await generatePDF(agreement);
+      await downloadPDF(agreement);
       toast({
         title: "PDF gerado",
-        description: "O PDF foi gerado com sucesso.",
+        description: "Download do PDF iniciado com sucesso.",
       });
     } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
       toast({
         title: "Erro",
         description: "Erro ao gerar PDF.",
