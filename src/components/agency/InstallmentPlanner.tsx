@@ -11,8 +11,12 @@ import { Plus, Trash2, Calendar, AlertTriangle, Percent, TrendingDown } from "lu
 import { InstallmentPlan } from "@/lib/storage";
 
 interface InstallmentPlannerProps {
+  /** Total com encargos (principal + juros + multa, etc.) */
   totalAmount: number;
+  /** Juros total (desconto padrão incide aqui quando "Desconto no valor total" estiver desligado) */
   interestAmount?: number;
+  /** Valor original (ex.: principal sem juros) apenas para exibição no resumo */
+  originalAmount?: number;
   onPlansChange: (plans: InstallmentPlan[]) => void;
 }
 
@@ -27,7 +31,7 @@ const getDefaultDiscountTable = (baseDiscount: number) => [
   { maxInstallments: 12, discountPercent: Math.round(baseDiscount * 0.2), label: "7-12x", color: "bg-red-400 dark:bg-red-500" },
 ];
 
-const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: InstallmentPlannerProps) => {
+const InstallmentPlanner = ({ totalAmount, interestAmount = 0, originalAmount, onPlansChange }: InstallmentPlannerProps) => {
   const [baseDiscountPercent, setBaseDiscountPercent] = useState(100);
   const [applyToTotal, setApplyToTotal] = useState(false);
   const [autoDiscount, setAutoDiscount] = useState(true);
@@ -84,22 +88,43 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
 
   // Recalcular quando parâmetros mudam
   useEffect(() => {
-    if (autoDiscount) {
-      const tier = getDiscountForInstallments(plans.length);
-      const updatedPlans = plans.map((p, index) => {
-        const valuePerInstallment = totalAmount / plans.length;
-        const finalValue = calculateFinalValue(valuePerInstallment, tier.discountPercent, plans.length);
-        return {
-          ...p,
-          value: valuePerInstallment,
-          discount: tier.discountPercent,
-          finalValue: finalValue,
-        };
-      });
-      setPlans(updatedPlans);
-      onPlansChange(updatedPlans);
-    }
-  }, [baseDiscountPercent, applyToTotal, autoDiscount]);
+    const count = plans.length;
+    if (count === 0) return;
+
+    const tier = getDiscountForInstallments(count);
+    const valuePerInstallment = totalAmount / count;
+
+    const updatedPlans = plans.map((p) => {
+      const value = autoDiscount ? valuePerInstallment : (Number(p.value) || 0);
+      const discount = autoDiscount ? tier.discountPercent : (Number(p.discount) || 0);
+      return {
+        ...p,
+        value,
+        discount,
+        finalValue: calculateFinalValue(value, discount, count),
+      };
+    });
+
+    const changed = updatedPlans.some((p, i) => {
+      const cur = plans[i];
+      return !cur || p.value !== cur.value || p.discount !== cur.discount || p.finalValue !== cur.finalValue;
+    });
+
+    if (!changed) return;
+
+    setPlans(updatedPlans);
+    onPlansChange(updatedPlans);
+  }, [
+    autoDiscount,
+    baseDiscountPercent,
+    applyToTotal,
+    totalAmount,
+    interestAmount,
+    plans,
+    getDiscountForInstallments,
+    calculateFinalValue,
+    onPlansChange,
+  ]);
 
   const addInstallment = () => {
     const newCount = plans.length + 1;
@@ -152,7 +177,9 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
 
   const currentDiscountTier = getDiscountForInstallments(plans.length);
   const totalFinal = plans.reduce((sum, p) => sum + p.finalValue, 0);
-  const totalSavings = totalAmount - totalFinal;
+  const totalWithoutDiscount = totalAmount;
+  const originalDisplay = typeof originalAmount === "number" ? originalAmount : totalAmount;
+  const totalSavings = totalWithoutDiscount - totalFinal;
 
   return (
     <Card className="glass-card p-6">
@@ -340,22 +367,26 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
 
       {/* Resumo */}
       <div className="mt-6 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 border border-primary/20">
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Original</p>
-            <p className="text-lg font-bold text-foreground">R$ {totalAmount.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total original</p>
+            <p className="text-lg font-bold text-foreground">R$ {originalDisplay.toFixed(2)}</p>
           </div>
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Juros</p>
-            <p className="text-lg font-bold text-amber-600 dark:text-amber-400">R$ {interestAmount.toFixed(2)}</p>
+            <p className="text-lg font-bold text-foreground">R$ {interestAmount.toFixed(2)}</p>
           </div>
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total a Pagar</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total s/ desconto</p>
+            <p className="text-lg font-bold text-foreground">R$ {totalWithoutDiscount.toFixed(2)}</p>
+          </div>
+          <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total a pagar</p>
             <p className="text-lg font-bold text-primary">R$ {totalFinal.toFixed(2)}</p>
           </div>
-          <div className="text-center p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
-            <p className="text-xs text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">Economia</p>
-            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">R$ {totalSavings.toFixed(2)}</p>
+          <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Economia</p>
+            <p className="text-lg font-bold text-primary">R$ {totalSavings.toFixed(2)}</p>
           </div>
         </div>
       </div>

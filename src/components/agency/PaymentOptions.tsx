@@ -19,6 +19,14 @@ const PaymentOptions = ({ agreementData }: PaymentOptionsProps) => {
   const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
   const [installmentPlans, setInstallmentPlans] = useState<any[]>([]);
 
+  const principal = parseFloat(String(agreementData?.principalAmount ?? "")) || 0;
+  const interestRate = parseFloat(String(agreementData?.interestRate ?? "")) || 0;
+  const penaltyRate = parseFloat(String(agreementData?.penaltyRate ?? "")) || 0;
+
+  const interestAmount = (principal * interestRate) / 100;
+  const penaltyAmount = (principal * penaltyRate) / 100;
+  const totalWithCharges = agreementData?.calculatedTotal ?? principal + interestAmount + penaltyAmount;
+
   const paymentMethods = [
     { id: "pix", name: "PIX", icon: Smartphone, description: "Pagamento instantâneo via QR Code", color: "text-cyan-500" },
     { id: "boleto", name: "Boleto Bancário", icon: FileText, description: "Pagamento via boleto com código de barras", color: "text-orange-500" },
@@ -124,7 +132,9 @@ const PaymentOptions = ({ agreementData }: PaymentOptionsProps) => {
 
       {selectedMethods.length > 0 && (
         <InstallmentPlanner
-          totalAmount={agreementData.calculatedTotal}
+          totalAmount={totalWithCharges}
+          interestAmount={interestAmount}
+          originalAmount={principal}
           onPlansChange={setInstallmentPlans}
         />
       )}
