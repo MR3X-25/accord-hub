@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Slider } from "@/components/ui/slider";
 import { Plus, Trash2, Calendar, AlertTriangle, Percent, TrendingDown } from "lucide-react";
 import { InstallmentPlan } from "@/lib/storage";
 
@@ -15,101 +16,104 @@ interface InstallmentPlannerProps {
   onPlansChange: (plans: InstallmentPlan[]) => void;
 }
 
-// Tabela de descontos progressivos por número de parcelas
-const DISCOUNT_TABLE = [
-  { maxInstallments: 1, discountPercent: 50, label: "À Vista", color: "bg-emerald-500 dark:bg-emerald-600" },
-  { maxInstallments: 2, discountPercent: 40, label: "2x", color: "bg-green-500 dark:bg-green-600" },
-  { maxInstallments: 3, discountPercent: 30, label: "3x", color: "bg-lime-500 dark:bg-lime-600" },
-  { maxInstallments: 4, discountPercent: 25, label: "4x", color: "bg-yellow-500 dark:bg-yellow-600" },
-  { maxInstallments: 5, discountPercent: 20, label: "5x", color: "bg-amber-500 dark:bg-amber-600" },
-  { maxInstallments: 6, discountPercent: 15, label: "6x", color: "bg-orange-500 dark:bg-orange-600" },
-  { maxInstallments: 12, discountPercent: 10, label: "7-12x", color: "bg-red-400 dark:bg-red-500" },
+// Tabela base de descontos progressivos por número de parcelas
+const getDefaultDiscountTable = (baseDiscount: number) => [
+  { maxInstallments: 1, discountPercent: baseDiscount, label: "À Vista", color: "bg-emerald-500 dark:bg-emerald-600" },
+  { maxInstallments: 2, discountPercent: Math.round(baseDiscount * 0.8), label: "2x", color: "bg-green-500 dark:bg-green-600" },
+  { maxInstallments: 3, discountPercent: Math.round(baseDiscount * 0.6), label: "3x", color: "bg-lime-500 dark:bg-lime-600" },
+  { maxInstallments: 4, discountPercent: Math.round(baseDiscount * 0.5), label: "4x", color: "bg-yellow-500 dark:bg-yellow-600" },
+  { maxInstallments: 5, discountPercent: Math.round(baseDiscount * 0.4), label: "5x", color: "bg-amber-500 dark:bg-amber-600" },
+  { maxInstallments: 6, discountPercent: Math.round(baseDiscount * 0.3), label: "6x", color: "bg-orange-500 dark:bg-orange-600" },
+  { maxInstallments: 12, discountPercent: Math.round(baseDiscount * 0.2), label: "7-12x", color: "bg-red-400 dark:bg-red-500" },
 ];
 
-const getDiscountForInstallments = (count: number) => {
-  for (const tier of DISCOUNT_TABLE) {
-    if (count <= tier.maxInstallments) {
-      return tier;
-    }
-  }
-  return { maxInstallments: count, discountPercent: 5, label: `${count}x`, color: "bg-muted" };
-};
-
 const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: InstallmentPlannerProps) => {
-  const [plans, setPlans] = useState<InstallmentPlan[]>([
-    {
-      installmentNumber: 1,
-      value: totalAmount,
-      dueDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString().split("T")[0],
-      discount: 0,
-      finalValue: totalAmount,
-    },
-  ]);
-
+  const [baseDiscountPercent, setBaseDiscountPercent] = useState(100);
   const [applyToTotal, setApplyToTotal] = useState(false);
   const [autoDiscount, setAutoDiscount] = useState(true);
   const [showTotalWarning, setShowTotalWarning] = useState(false);
 
-  const currentDiscountTier = getDiscountForInstallments(plans.length);
+  const discountTable = getDefaultDiscountTable(baseDiscountPercent);
 
-  // Atualizar desconto automático quando número de parcelas muda
-  useEffect(() => {
-    if (autoDiscount) {
-      applyProgressiveDiscount();
+  const getDiscountForInstallments = useCallback((count: number) => {
+    for (const tier of discountTable) {
+      if (count <= tier.maxInstallments) {
+        return tier;
+      }
     }
-  }, [plans.length, autoDiscount, applyToTotal]);
+    return { maxInstallments: count, discountPercent: Math.round(baseDiscountPercent * 0.1), label: `${count}x`, color: "bg-muted" };
+  }, [baseDiscountPercent, discountTable]);
 
-  const calculateDiscount = (baseValue: number, discountPercent: number) => {
+  const calculateFinalValue = useCallback((baseValue: number, discountPercent: number, installmentCount: number) => {
     if (applyToTotal) {
-      return baseValue * (discountPercent / 100);
+      // Desconto sobre o valor total da parcela
+      const discountAmount = baseValue * (discountPercent / 100);
+      return Math.max(0, baseValue - discountAmount);
     } else {
       // Desconto apenas sobre os juros proporcionais
-      const interestPerInstallment = interestAmount / plans.length;
-      return interestPerInstallment * (discountPercent / 100);
+      const interestPerInstallment = interestAmount / installmentCount;
+      const discountAmount = interestPerInstallment * (discountPercent / 100);
+      return Math.max(0, baseValue - discountAmount);
     }
-  };
+  }, [applyToTotal, interestAmount]);
 
-  const applyProgressiveDiscount = () => {
-    const tier = getDiscountForInstallments(plans.length);
-    const valuePerInstallment = totalAmount / plans.length;
+  const createPlans = useCallback((count: number, discountPercent?: number) => {
+    const valuePerInstallment = totalAmount / count;
+    const effectiveDiscount = discountPercent ?? (autoDiscount ? getDiscountForInstallments(count).discountPercent : 0);
     
-    const updatedPlans = plans.map((p) => {
-      const discountAmount = calculateDiscount(valuePerInstallment, tier.discountPercent);
-      return {
-        ...p,
+    const newPlans: InstallmentPlan[] = [];
+    for (let i = 0; i < count; i++) {
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 2 + (i * 30));
+      
+      const finalValue = calculateFinalValue(valuePerInstallment, effectiveDiscount, count);
+      
+      newPlans.push({
+        installmentNumber: i + 1,
         value: valuePerInstallment,
-        discount: tier.discountPercent,
-        finalValue: valuePerInstallment - discountAmount,
-      };
-    });
+        dueDate: dueDate.toISOString().split("T")[0],
+        discount: effectiveDiscount,
+        finalValue: finalValue,
+      });
+    }
     
-    setPlans(updatedPlans);
-    onPlansChange(updatedPlans);
-  };
+    return newPlans;
+  }, [totalAmount, autoDiscount, getDiscountForInstallments, calculateFinalValue]);
+
+  const [plans, setPlans] = useState<InstallmentPlan[]>(() => createPlans(1));
+
+  // Recalcular quando parâmetros mudam
+  useEffect(() => {
+    if (autoDiscount) {
+      const tier = getDiscountForInstallments(plans.length);
+      const updatedPlans = plans.map((p, index) => {
+        const valuePerInstallment = totalAmount / plans.length;
+        const finalValue = calculateFinalValue(valuePerInstallment, tier.discountPercent, plans.length);
+        return {
+          ...p,
+          value: valuePerInstallment,
+          discount: tier.discountPercent,
+          finalValue: finalValue,
+        };
+      });
+      setPlans(updatedPlans);
+      onPlansChange(updatedPlans);
+    }
+  }, [baseDiscountPercent, applyToTotal, autoDiscount]);
 
   const addInstallment = () => {
-    const lastPlan = plans[plans.length - 1];
-    const nextDate = new Date(lastPlan.dueDate);
-    nextDate.setMonth(nextDate.getMonth() + 1);
-
-    const newPlan: InstallmentPlan = {
-      installmentNumber: plans.length + 1,
-      value: totalAmount / (plans.length + 1),
-      dueDate: nextDate.toISOString().split("T")[0],
-      discount: 0,
-      finalValue: totalAmount / (plans.length + 1),
-    };
-
-    const updatedPlans = [...plans, newPlan];
-    setPlans(updatedPlans);
-    onPlansChange(updatedPlans);
+    const newCount = plans.length + 1;
+    const newPlans = createPlans(newCount);
+    setPlans(newPlans);
+    onPlansChange(newPlans);
   };
 
   const removePlan = (index: number) => {
     if (plans.length === 1) return;
-    const updatedPlans = plans.filter((_, i) => i !== index).map((p, i) => ({ ...p, installmentNumber: i + 1 }));
-    setPlans(updatedPlans);
-    onPlansChange(updatedPlans);
+    const newCount = plans.length - 1;
+    const newPlans = createPlans(newCount);
+    setPlans(newPlans);
+    onPlansChange(newPlans);
   };
 
   const updatePlan = (index: number, field: keyof InstallmentPlan, value: any) => {
@@ -119,10 +123,7 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
     if (field === "value" || field === "discount") {
       const baseValue = parseFloat(updatedPlans[index].value.toString()) || 0;
       const discount = parseFloat(updatedPlans[index].discount.toString()) || 0;
-      const discountAmount = applyToTotal 
-        ? baseValue * discount / 100 
-        : (interestAmount / plans.length) * discount / 100;
-      updatedPlans[index].finalValue = baseValue - discountAmount;
+      updatedPlans[index].finalValue = calculateFinalValue(baseValue, discount, plans.length);
     }
 
     setPlans(updatedPlans);
@@ -130,41 +131,14 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
   };
 
   const distributeEqually = () => {
-    const valuePerInstallment = totalAmount / plans.length;
-    const tier = autoDiscount ? getDiscountForInstallments(plans.length) : { discountPercent: 0 };
-    
-    const updatedPlans = plans.map((p, i) => {
-      const discountAmount = calculateDiscount(valuePerInstallment, autoDiscount ? tier.discountPercent : p.discount);
-      return {
-        ...p,
-        value: valuePerInstallment,
-        finalValue: valuePerInstallment - discountAmount,
-      };
-    });
-    setPlans(updatedPlans);
-    onPlansChange(updatedPlans);
+    const tier = autoDiscount ? getDiscountForInstallments(plans.length) : { discountPercent: plans[0]?.discount || 0 };
+    const newPlans = createPlans(plans.length, tier.discountPercent);
+    setPlans(newPlans);
+    onPlansChange(newPlans);
   };
 
   const selectPresetInstallments = (count: number) => {
-    const valuePerInstallment = totalAmount / count;
-    const tier = getDiscountForInstallments(count);
-    
-    const newPlans: InstallmentPlan[] = [];
-    for (let i = 0; i < count; i++) {
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 2 + (i * 30));
-      
-      const discountAmount = calculateDiscount(valuePerInstallment, tier.discountPercent);
-      
-      newPlans.push({
-        installmentNumber: i + 1,
-        value: valuePerInstallment,
-        dueDate: dueDate.toISOString().split("T")[0],
-        discount: tier.discountPercent,
-        finalValue: valuePerInstallment - discountAmount,
-      });
-    }
-    
+    const newPlans = createPlans(count);
     setPlans(newPlans);
     onPlansChange(newPlans);
   };
@@ -176,9 +150,9 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
     setApplyToTotal(checked);
   };
 
+  const currentDiscountTier = getDiscountForInstallments(plans.length);
   const totalFinal = plans.reduce((sum, p) => sum + p.finalValue, 0);
-  const totalOriginal = plans.reduce((sum, p) => sum + p.value, 0);
-  const totalSavings = totalOriginal - totalFinal;
+  const totalSavings = totalAmount - totalFinal;
 
   return (
     <Card className="glass-card p-6">
@@ -193,13 +167,41 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
           </Badge>
         </div>
 
-        {/* Opções de desconto pré-definidas */}
+        {/* Slider para ajustar porcentagem base de desconto */}
+        <div className="bg-muted/50 dark:bg-muted/30 p-4 rounded-lg">
+          <div className="flex justify-between items-center mb-3">
+            <Label className="text-sm font-medium text-foreground">
+              Porcentagem base de desconto: <span className="text-primary font-bold">{baseDiscountPercent}%</span>
+            </Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={baseDiscountPercent}
+              onChange={(e) => setBaseDiscountPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+              className="w-20 text-center bg-background"
+            />
+          </div>
+          <Slider
+            value={[baseDiscountPercent]}
+            onValueChange={(value) => setBaseDiscountPercent(value[0])}
+            max={100}
+            min={0}
+            step={5}
+            className="w-full"
+          />
+          <p className="text-xs text-muted-foreground mt-2">
+            Ajuste a porcentagem inicial. O desconto reduz progressivamente conforme o número de parcelas.
+          </p>
+        </div>
+
+        {/* Opções de parcelas pré-definidas */}
         <div className="bg-muted/50 dark:bg-muted/30 p-4 rounded-lg">
           <Label className="text-sm font-medium text-foreground mb-3 block">
-            Escolha o número de parcelas (desconto progressivo nos juros):
+            Escolha o número de parcelas:
           </Label>
           <div className="flex flex-wrap gap-2">
-            {DISCOUNT_TABLE.map((tier) => (
+            {discountTable.map((tier) => (
               <Button
                 key={tier.maxInstallments}
                 variant={plans.length === tier.maxInstallments ? "default" : "outline"}
@@ -293,7 +295,7 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
                 <Input
                   type="number"
                   step="0.01"
-                  value={plan.value}
+                  value={plan.value.toFixed(2)}
                   onChange={(e) => updatePlan(index, "value", parseFloat(e.target.value) || 0)}
                   className="bg-background dark:bg-background/50"
                 />
@@ -302,7 +304,9 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
                 <Label className="text-muted-foreground">Desconto (%)</Label>
                 <Input
                   type="number"
-                  step="0.01"
+                  step="1"
+                  min="0"
+                  max="100"
                   value={plan.discount}
                   onChange={(e) => updatePlan(index, "discount", parseFloat(e.target.value) || 0)}
                   disabled={autoDiscount}
@@ -334,7 +338,7 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
         ))}
       </div>
 
-      {/* Resumo com cores claras/escuras */}
+      {/* Resumo */}
       <div className="mt-6 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 border border-primary/20">
         <div className="grid md:grid-cols-4 gap-4">
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
@@ -346,7 +350,7 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
             <p className="text-lg font-bold text-amber-600 dark:text-amber-400">R$ {interestAmount.toFixed(2)}</p>
           </div>
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Final</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total a Pagar</p>
             <p className="text-lg font-bold text-primary">R$ {totalFinal.toFixed(2)}</p>
           </div>
           <div className="text-center p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg border border-emerald-200 dark:border-emerald-800">
@@ -358,9 +362,9 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
 
       {/* Legenda de descontos */}
       <div className="mt-4 p-3 bg-muted/30 dark:bg-muted/20 rounded-lg">
-        <p className="text-xs text-muted-foreground mb-2 font-medium">Tabela de Descontos Progressivos:</p>
+        <p className="text-xs text-muted-foreground mb-2 font-medium">Tabela de Descontos (base: {baseDiscountPercent}%):</p>
         <div className="flex flex-wrap gap-2">
-          {DISCOUNT_TABLE.map((tier) => (
+          {discountTable.map((tier) => (
             <span 
               key={tier.maxInstallments} 
               className={`text-xs px-2 py-1 rounded ${tier.color} text-white`}
@@ -370,7 +374,7 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, onPlansChange }: 
           ))}
         </div>
         <p className="text-xs text-muted-foreground mt-2 italic">
-          * Descontos aplicados {applyToTotal ? "sobre o valor total" : "apenas sobre os juros"} conforme normas de mercado
+          * Descontos aplicados {applyToTotal ? "sobre o valor total" : "apenas sobre os juros"}
         </p>
       </div>
     </Card>
