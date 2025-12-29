@@ -3,11 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import logo from "@/assets/mr3x-logo.png";
 import { getAgreementById, AgreementData } from "@/lib/storage";
+import { calculateAgreementValues, formatCurrency, formatDate } from "@/lib/calculateAgreement";
 
 const TenantAgreementView = () => {
   const [searchParams] = useSearchParams();
   const [agreement, setAgreement] = useState<AgreementData | null>(null);
-  
+
   useEffect(() => {
     const id = searchParams.get("id");
     if (id) {
@@ -24,13 +25,18 @@ const TenantAgreementView = () => {
     );
   }
 
-  const interest = (parseFloat(agreement.principalAmount) * parseFloat(agreement.interestRate)) / 100;
-  const penalty = (parseFloat(agreement.principalAmount) * parseFloat(agreement.penaltyRate)) / 100;
+  const calc = calculateAgreementValues(agreement);
+  const methodLabels: Record<string, string> = {
+    pix: "PIX",
+    boleto: "Boleto Bancário",
+    card: "Cartão de Crédito",
+    link: "Link de Pagamento",
+  };
 
   return (
     <Card className="bg-background p-6 md:p-8 shadow-xl relative overflow-hidden">
       <div className="watermark">CONFIDENCIAL</div>
-      
+
       <div className="space-y-6 relative z-10">
         {/* Header */}
         <div className="pb-6 border-b-2 text-center">
@@ -41,7 +47,7 @@ const TenantAgreementView = () => {
           <p className="text-lg font-serif italic text-muted-foreground">MR3X - Gestão e Tecnologia em Pagamentos de Aluguéis</p>
           <div className="mt-4 text-sm">
             <p className="font-semibold">Doc ID: {agreement.id}</p>
-            <p className="text-muted-foreground">Data: {new Date(agreement.createdAt).toLocaleDateString('pt-BR')}</p>
+            <p className="text-muted-foreground">Data: {new Date(agreement.createdAt).toLocaleDateString("pt-BR")}</p>
           </div>
         </div>
 
@@ -80,50 +86,108 @@ const TenantAgreementView = () => {
             <p><span className="font-semibold">Período em Atraso:</span> {agreement.debtPeriod}</p>
           </div>
 
+          {/* Resumo Financeiro Detalhado */}
           <div>
-            <h3 className="font-bold text-lg mb-2 text-foreground">Valores</h3>
-            <div className="bg-primary/5 p-4 rounded-lg space-y-2">
+            <h3 className="font-bold text-lg mb-3 text-foreground">Resumo Financeiro</h3>
+            <div className="bg-primary/5 p-4 rounded-lg space-y-3">
               <div className="flex justify-between">
                 <span>Valor Principal:</span>
-                <span className="font-semibold">R$ {agreement.principalAmount}</span>
+                <span className="font-semibold">{formatCurrency(calc.principal)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Juros ({agreement.interestRate}%):</span>
-                <span className="font-semibold">R$ {interest.toFixed(2)}</span>
+                <span>Juros ({calc.interestRate}%):</span>
+                <span className="font-semibold">{formatCurrency(calc.interestAmount)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Multa ({agreement.penaltyRate}%):</span>
-                <span className="font-semibold">R$ {penalty.toFixed(2)}</span>
+                <span>Multa ({calc.penaltyRate}%):</span>
+                <span className="font-semibold">{formatCurrency(calc.penaltyAmount)}</span>
               </div>
-              <div className="flex justify-between pt-2 border-t-2">
-                <span className="font-bold text-lg">Total:</span>
-                <span className="font-bold text-lg text-primary">R$ {agreement.calculatedTotal.toFixed(2)}</span>
+              <div className="flex justify-between pt-2 border-t">
+                <span className="font-semibold">Total s/ desconto:</span>
+                <span className="font-semibold">{formatCurrency(calc.totalWithCharges)}</span>
               </div>
+
+              {calc.discountAmount > 0 && (
+                <>
+                  <div className="flex justify-between text-green-600 dark:text-green-400">
+                    <span>Desconto ({calc.discount.toFixed(1)}%):</span>
+                    <span className="font-semibold">-{formatCurrency(calc.discountAmount)}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t-2 border-primary/30">
+                    <span className="font-bold text-lg">Total a Pagar:</span>
+                    <span className="font-bold text-lg text-primary">{formatCurrency(calc.totalFinal)}</span>
+                  </div>
+                  <div className="flex justify-between text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+                    <span className="font-semibold">Economia:</span>
+                    <span className="font-bold">{formatCurrency(calc.savings)}</span>
+                  </div>
+                </>
+              )}
+
+              {calc.discountAmount === 0 && (
+                <div className="flex justify-between pt-2 border-t-2">
+                  <span className="font-bold text-lg">Total:</span>
+                  <span className="font-bold text-lg text-primary">{formatCurrency(calc.totalWithCharges)}</span>
+                </div>
+              )}
             </div>
           </div>
 
+          {/* Forma de Pagamento */}
           {agreement.paymentOptions && agreement.paymentOptions.length > 0 && (
             <div>
-              <h3 className="font-bold text-lg mb-2 text-foreground">Formas de Pagamento Disponíveis</h3>
-              <div className="space-y-2">
-                {agreement.paymentOptions.map((option, index) => (
-                  <div key={index} className="p-3 border rounded-lg bg-card">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold capitalize">{option.method.replace("_", " ")}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {option.installments}x de R$ {option.installmentValue.toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">R$ {option.totalValue.toFixed(2)}</p>
-                        {option.discount > 0 && (
-                          <p className="text-sm text-green-600">Desconto: {option.discount}%</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <h3 className="font-bold text-lg mb-2 text-foreground">Forma de Pagamento</h3>
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4">
+                <p className="font-semibold">
+                  Método: {agreement.paymentOptions.map((opt) => methodLabels[opt.method] || opt.method).join(", ")}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Detalhes das Parcelas */}
+          {agreement.installmentPlans && agreement.installmentPlans.length > 0 && (
+            <div>
+              <h3 className="font-bold text-lg mb-3 text-foreground">
+                Plano de Parcelas ({agreement.installmentPlans.length}x)
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="p-2 text-left">Nº</th>
+                      <th className="p-2 text-right">Valor Base</th>
+                      <th className="p-2 text-right">Desconto</th>
+                      <th className="p-2 text-right">Valor Final</th>
+                      <th className="p-2 text-center">Vencimento</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {agreement.installmentPlans.map((plan) => {
+                      const discountAmt = plan.value - plan.finalValue;
+                      return (
+                        <tr key={plan.installmentNumber} className="border-b border-muted/30">
+                          <td className="p-2 font-semibold">{plan.installmentNumber}</td>
+                          <td className="p-2 text-right">{formatCurrency(plan.value)}</td>
+                          <td className="p-2 text-right text-green-600 dark:text-green-400">
+                            {plan.discount}% (-{formatCurrency(discountAmt)})
+                          </td>
+                          <td className="p-2 text-right font-semibold">{formatCurrency(plan.finalValue)}</td>
+                          <td className="p-2 text-center">{formatDate(plan.dueDate)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-primary/10 font-bold">
+                      <td className="p-2" colSpan={3}>Total</td>
+                      <td className="p-2 text-right">
+                        {formatCurrency(agreement.installmentPlans.reduce((sum, p) => sum + p.finalValue, 0))}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             </div>
           )}
