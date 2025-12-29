@@ -14,16 +14,416 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agencies: {
+        Row: {
+          address: string | null
+          cep: string | null
+          city: string | null
+          cnpj: string | null
+          created_at: string | null
+          created_by: string | null
+          creci: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          state: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          cep?: string | null
+          city?: string | null
+          cnpj?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          creci: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          cep?: string | null
+          city?: string | null
+          cnpj?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          creci?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      agreements: {
+        Row: {
+          agency_creci: string | null
+          agency_name: string
+          client_ip: string | null
+          contract_id: string
+          created_at: string | null
+          created_by: string | null
+          debtor_cpf: string
+          debtor_name: string
+          debtor_rg: string | null
+          discount_amount: number | null
+          discount_percent: number | null
+          final_amount: number
+          hash: string | null
+          id: string
+          installment_plan: Json | null
+          installments: number | null
+          interest_amount: number | null
+          interest_rate: number
+          owner_cpf_cnpj: string | null
+          owner_name: string
+          payment_options: Json | null
+          penalty_amount: number | null
+          penalty_rate: number
+          principal_amount: number
+          property_address: string
+          property_id: string | null
+          signature_data: Json | null
+          signed_at: string | null
+          status: string | null
+          total_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          agency_creci?: string | null
+          agency_name: string
+          client_ip?: string | null
+          contract_id: string
+          created_at?: string | null
+          created_by?: string | null
+          debtor_cpf: string
+          debtor_name: string
+          debtor_rg?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          final_amount: number
+          hash?: string | null
+          id?: string
+          installment_plan?: Json | null
+          installments?: number | null
+          interest_amount?: number | null
+          interest_rate?: number
+          owner_cpf_cnpj?: string | null
+          owner_name: string
+          payment_options?: Json | null
+          penalty_amount?: number | null
+          penalty_rate?: number
+          principal_amount: number
+          property_address: string
+          property_id?: string | null
+          signature_data?: Json | null
+          signed_at?: string | null
+          status?: string | null
+          total_amount: number
+          updated_at?: string | null
+        }
+        Update: {
+          agency_creci?: string | null
+          agency_name?: string
+          client_ip?: string | null
+          contract_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          debtor_cpf?: string
+          debtor_name?: string
+          debtor_rg?: string | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          final_amount?: number
+          hash?: string | null
+          id?: string
+          installment_plan?: Json | null
+          installments?: number | null
+          interest_amount?: number | null
+          interest_rate?: number
+          owner_cpf_cnpj?: string | null
+          owner_name?: string
+          payment_options?: Json | null
+          penalty_amount?: number | null
+          penalty_rate?: number
+          principal_amount?: number
+          property_address?: string
+          property_id?: string | null
+          signature_data?: Json | null
+          signed_at?: string | null
+          status?: string | null
+          total_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agreements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debtors: {
+        Row: {
+          address: string | null
+          cep: string | null
+          city: string | null
+          cpf: string
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          rg: string | null
+          state: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          cep?: string | null
+          city?: string | null
+          cpf: string
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          rg?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          cep?: string | null
+          city?: string | null
+          cpf?: string
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          rg?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      owners: {
+        Row: {
+          address: string | null
+          agency_id: string | null
+          cep: string | null
+          city: string | null
+          cpf_cnpj: string
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          rg: string | null
+          state: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          agency_id?: string | null
+          cep?: string | null
+          city?: string | null
+          cpf_cnpj: string
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          rg?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          agency_id?: string | null
+          cep?: string | null
+          city?: string | null
+          cpf_cnpj?: string
+          created_at?: string | null
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          rg?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "owners_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string
+          agency_id: string
+          cep: string
+          city: string
+          complement: string | null
+          contract_id: string
+          created_at: string | null
+          created_by: string | null
+          debtor_id: string
+          id: string
+          interest_rate: number
+          neighborhood: string | null
+          number: string | null
+          owner_id: string
+          penalty_rate: number
+          rent_value: number
+          state: string
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          agency_id: string
+          cep: string
+          city: string
+          complement?: string | null
+          contract_id: string
+          created_at?: string | null
+          created_by?: string | null
+          debtor_id: string
+          id?: string
+          interest_rate?: number
+          neighborhood?: string | null
+          number?: string | null
+          owner_id: string
+          penalty_rate?: number
+          rent_value?: number
+          state: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          agency_id?: string
+          cep?: string
+          city?: string
+          complement?: string | null
+          contract_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          debtor_id?: string
+          id?: string
+          interest_rate?: number
+          neighborhood?: string | null
+          number?: string | null
+          owner_id?: string
+          penalty_rate?: number
+          rent_value?: number
+          state?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_debtor_id_fkey"
+            columns: ["debtor_id"]
+            isOneToOne: false
+            referencedRelation: "debtors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +550,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
