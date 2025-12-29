@@ -11,11 +11,13 @@ import { Plus, Trash2, Calendar, AlertTriangle, Percent, TrendingDown } from "lu
 import { InstallmentPlan } from "@/lib/storage";
 
 interface InstallmentPlannerProps {
-  /** Total com encargos (principal + juros + multa, etc.) */
+  /** Total com encargos (principal + juros + multa) */
   totalAmount: number;
-  /** Juros total (desconto padrão incide aqui quando "Desconto no valor total" estiver desligado) */
+  /** Juros total */
   interestAmount?: number;
-  /** Valor original (ex.: principal sem juros) apenas para exibição no resumo */
+  /** Multa total */
+  penaltyAmount?: number;
+  /** Valor original (principal sem encargos) */
   originalAmount?: number;
   onPlansChange: (plans: InstallmentPlan[]) => void;
 }
@@ -31,7 +33,7 @@ const getDefaultDiscountTable = (baseDiscount: number) => [
   { maxInstallments: 12, discountPercent: Math.round(baseDiscount * 0.2), label: "7-12x", color: "bg-red-400 dark:bg-red-500" },
 ];
 
-const InstallmentPlanner = ({ totalAmount, interestAmount = 0, originalAmount, onPlansChange }: InstallmentPlannerProps) => {
+const InstallmentPlanner = ({ totalAmount, interestAmount = 0, penaltyAmount = 0, originalAmount, onPlansChange }: InstallmentPlannerProps) => {
   const [baseDiscountPercent, setBaseDiscountPercent] = useState(100);
   const [applyToTotal, setApplyToTotal] = useState(false);
   const [autoDiscount, setAutoDiscount] = useState(true);
@@ -365,11 +367,12 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, originalAmount, o
         ))}
       </div>
 
-      {/* Resumo */}
+      {/* Resumo Detalhado */}
       <div className="mt-6 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 border border-primary/20">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <h4 className="text-sm font-bold text-foreground mb-4 uppercase tracking-wide">Resumo Financeiro</h4>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total original</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Principal</p>
             <p className="text-lg font-bold text-foreground">R$ {originalDisplay.toFixed(2)}</p>
           </div>
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
@@ -377,18 +380,58 @@ const InstallmentPlanner = ({ totalAmount, interestAmount = 0, originalAmount, o
             <p className="text-lg font-bold text-foreground">R$ {interestAmount.toFixed(2)}</p>
           </div>
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total s/ desconto</p>
-            <p className="text-lg font-bold text-foreground">R$ {totalWithoutDiscount.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Multa</p>
+            <p className="text-lg font-bold text-foreground">R$ {penaltyAmount.toFixed(2)}</p>
           </div>
           <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total s/ desc.</p>
+            <p className="text-lg font-bold text-foreground">R$ {totalWithoutDiscount.toFixed(2)}</p>
+          </div>
+          <div className="text-center p-3 bg-card/50 dark:bg-card/30 rounded-lg border border-primary/30">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Total a pagar</p>
             <p className="text-lg font-bold text-primary">R$ {totalFinal.toFixed(2)}</p>
           </div>
-          <div className="text-center p-3 bg-primary/10 rounded-lg border border-primary/20">
+          <div className="text-center p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Economia</p>
-            <p className="text-lg font-bold text-primary">R$ {totalSavings.toFixed(2)}</p>
+            <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">R$ {totalSavings.toFixed(2)}</p>
           </div>
         </div>
+
+        {/* Resumo por parcela */}
+        {plans.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <p className="text-xs text-muted-foreground mb-2 font-medium">Detalhes por parcela:</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-muted-foreground">
+                    <th className="p-2 text-left">Nº</th>
+                    <th className="p-2 text-right">Valor Base</th>
+                    <th className="p-2 text-right">Desconto</th>
+                    <th className="p-2 text-right">Valor Final</th>
+                    <th className="p-2 text-center">Vencimento</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plans.map((plan) => {
+                    const discountAmt = plan.value - plan.finalValue;
+                    return (
+                      <tr key={plan.installmentNumber} className="border-t border-border/30">
+                        <td className="p-2 font-semibold">{plan.installmentNumber}</td>
+                        <td className="p-2 text-right">R$ {plan.value.toFixed(2)}</td>
+                        <td className="p-2 text-right text-emerald-600 dark:text-emerald-400">
+                          {plan.discount}% (-R$ {discountAmt.toFixed(2)})
+                        </td>
+                        <td className="p-2 text-right font-semibold">R$ {plan.finalValue.toFixed(2)}</td>
+                        <td className="p-2 text-center">{new Date(plan.dueDate).toLocaleDateString("pt-BR")}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Legenda de descontos */}

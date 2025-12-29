@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { saveAgreement, getAgreementById } from "@/lib/storage";
 import { useSearchParams } from "react-router-dom";
 import InstallmentPlanner from "./InstallmentPlanner";
+import { calculateAgreementValues } from "@/lib/calculateAgreement";
 
 interface PaymentOptionsProps {
   agreementData: any;
@@ -19,13 +20,12 @@ const PaymentOptions = ({ agreementData }: PaymentOptionsProps) => {
   const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
   const [installmentPlans, setInstallmentPlans] = useState<any[]>([]);
 
-  const principal = parseFloat(String(agreementData?.principalAmount ?? "")) || 0;
-  const interestRate = parseFloat(String(agreementData?.interestRate ?? "")) || 0;
-  const penaltyRate = parseFloat(String(agreementData?.penaltyRate ?? "")) || 0;
-
-  const interestAmount = (principal * interestRate) / 100;
-  const penaltyAmount = (principal * penaltyRate) / 100;
-  const totalWithCharges = agreementData?.calculatedTotal ?? principal + interestAmount + penaltyAmount;
+  // Usar função centralizada de cálculo para consistência
+  const calc = agreementData ? calculateAgreementValues(agreementData) : null;
+  const principal = calc?.principal ?? 0;
+  const interestAmount = calc?.interestAmount ?? 0;
+  const penaltyAmount = calc?.penaltyAmount ?? 0;
+  const totalWithCharges = calc?.totalWithCharges ?? 0;
 
   const paymentMethods = [
     { id: "pix", name: "PIX", icon: Smartphone, description: "Pagamento instantâneo via QR Code", color: "text-cyan-500" },
@@ -134,6 +134,7 @@ const PaymentOptions = ({ agreementData }: PaymentOptionsProps) => {
         <InstallmentPlanner
           totalAmount={totalWithCharges}
           interestAmount={interestAmount}
+          penaltyAmount={penaltyAmount}
           originalAmount={principal}
           onPlansChange={setInstallmentPlans}
         />
